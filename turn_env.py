@@ -13,18 +13,14 @@ class TurnEnvironment:
         
         
     def get_states(self):
-    #return states and associated probability for all subsets of dices for rerollto pre-compute reroll probabilities
+    #return states and associated probability for all subsets of dices for reroll to pre-compute reroll probabilities
         Roll = [ [] for _ in range(self.dices) ]
         Roll_P = []
     
-        for it in itertools.product(range(self.faces),repeat=self.dices):
-            for d in range(self.dices):
-                # each state is seen as a product of nb_dice 
-                s = np.zeros((self.faces),dtype='int')
-                for f in range(self.faces) :
-                    s[f] = it[d:].count(f)
-                    if s.sum() == self.dices :
-                        break
+        # For 1 to self.dices, generate all possible states of n dices
+        for d in range(self.dices):
+            for it in itertools.product(range(self.faces),repeat=self.dices):
+                s = np.bincount(np.array(it[d:], dtype='int'),minlength=self.faces)
                 Roll[d].append(s) 
       
         for  d in range(self.dices):
