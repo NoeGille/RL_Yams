@@ -1,5 +1,5 @@
 from figures import Multiple, Chance, Number
-from yams_env import YamsEnv
+from yams_env import YamsEnvPierre as YamsEnv
 from tqdm import tqdm
 
 class first_visit_MC():
