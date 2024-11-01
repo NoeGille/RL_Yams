@@ -24,31 +24,29 @@ def first_visit_MC_prediction(env:YamsEnv, gamma:float=0.9, max_iter:int=100, se
 
 if __name__ == '__main__':
     from figures import Multiple, Chance, Number, Brelan, Suite
-    env = YamsEnv(3, 3, [Number(0), Number(2), Multiple(3, 7)])
-    env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
-    best_Q = first_visit_MC_prediction(env, max_iter=10)
-    randomQ_rewards = []
-    bestQ_rewards = []
-    Q = {}
-    for s in env.states:
-        all_actions = env.list_actions(s)
-        for a in all_actions:
-            Q[(s,a)] = np.random.random() # Random policy
-    k = 10
-    # Test with a random policy
-    for i in tqdm(range(k), desc='Generate episodes for random policy'):
-        episode = env.generate_episode(Q, seed=i)
-        randomQ_rewards.append(env.tot_reward)
+    env = YamsEnv(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 7), Multiple(3, 56)])
+    #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
+    for j in range(10):
+        best_Q = first_visit_MC_prediction(env, max_iter=1000, seed=j)
+        randomQ_rewards = []
+        bestQ_rewards = []
+        np.random.seed(j)
+        Q = {}
+        for s in env.states:
+            all_actions = env.list_actions(s)
+            for a in all_actions:
+                Q[(s,a)] = np.random.random() # Random policy
+        k = 100
+        # Test with a random policy
+        for i in tqdm(range(k), desc='Generate episodes for random policy'):
+            episode = env.generate_episode(Q, seed=i)
+            randomQ_rewards.append(env.tot_reward)
+            
+        for i in tqdm(range(k), desc='Generate episodes for learned policy'):
+            episode = env.generate_episode(best_Q,seed=i)
+            bestQ_rewards.append(env.tot_reward)
         
-    for i in tqdm(range(k), desc='Generate episodes for learned policy'):
-        episode = env.generate_episode(best_Q,seed=i)
-        bestQ_rewards.append(env.tot_reward)
+        print(f'Pour les mêmes lancer de dès:')
+        print(f'Reward moyen politique random: {np.mean(randomQ_rewards)}')
+        print(f'Reward moyen best politique: {np.mean(bestQ_rewards)}')
         
-    print(f'Pour les mêmes lancer de dès:')
-    print(f'Reward moyen politique random: {np.mean(randomQ_rewards)}')
-    print(f'Reward moyen best politique: {np.mean(bestQ_rewards)}')
-    import matplotlib.pyplot as plt
-    plt.plot(randomQ_rewards)
-    plt.plot(bestQ_rewards)
-    plt.show()
-    
