@@ -7,12 +7,16 @@ class Figure:
     def compute_value(self, dices:np.array):
         return NotImplementedError
 
+    def get_possible_values(self , n_dice:int, n_face:int):
+        return NotImplementedError
+    
 class Chance(Figure):
     def is_valid(self, dices:np.array):
         return True
 
     def compute_value(self, dices:np.array):
         return (dices * (np.arange(dices.shape[0]) + 1)).sum()
+    
 
 class Number(Figure):
     def __init__(self, number:int):
@@ -24,6 +28,10 @@ class Number(Figure):
     def compute_value(self, dices:np.array):
         return (self.number + 1) * dices[self.number]
 
+    def get_possible_values(self, n_dice:int, n_face:int):
+        return [(self.number + 1) * i for i in range(n_dice+1)]
+        
+        
 class Suite(Figure):
     def __init__(self, start:int, end:int, value:int=30):
         self.start = start
@@ -46,7 +54,10 @@ class Brelan(Figure):
         if not self.is_valid(dices):
             return 0
         return (dices * (np.arange(dices.shape[0]) + 1)).sum()
-
+    def get_possible_values(self, n_dice:int, n_face:int):
+        return [i*3 for i in range(n_face + 1)]
+    
+    
 class Multiple(Figure):
     def __init__(self, nb:int, value:int):
         self.nb = nb
@@ -59,7 +70,9 @@ class Multiple(Figure):
         if not self.is_valid(dices):
             return 0
         return self.value
-
+    def get_possible_values(self, n_dice:int, n_face:int):
+        return [0, self.value]
+    
 class Full(Figure):
     def is_valid(self, dices:np.array):
         result = np.sort(dices)

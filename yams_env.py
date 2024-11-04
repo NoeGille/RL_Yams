@@ -2,7 +2,7 @@ import numpy as np
 import itertools
 from figures import Figure
 from turn_env import TurnEnvironment
-
+from random import choice
 def default_RL_policy(state, actions):
     """Default policy, greedy"""
     return max(actions, key=lambda x: x[1])
@@ -100,12 +100,11 @@ class YamsEnvNoe:
     If its value is False then is in not scored else if True it is scored.
     action is an int corresponding to the index of the cell to cross in a state."""
 
-    def __init__(self, nb_dice: int, nb_face: int, figures: dict[Figure], RL_policy: callable = default_RL_policy):
+    def __init__(self, nb_dice: int, nb_face: int, figures: dict[Figure]):
         self.nb_face = nb_face
         self.nb_dice = nb_dice 
         self.figures = figures # List of figure object
         self.states = self.get_states() # List of all possible states
-        self.RL_policy = RL_policy
         self.scored = tuple([False for _ in range(len(figures))]) # Current state in the game
         self.tot_reward = 0
 
@@ -119,6 +118,8 @@ class YamsEnvNoe:
     def list_actions(self, s):
         '''Return a list of all possible actions from state s regardles
         of dices.'''
+        if self.is_terminal_state(s):
+            return [None]
         actions = []
         for i in range(len(s)):
             if not s[i]:
@@ -160,7 +161,7 @@ class YamsEnvNoe:
             
     
     def next_state(self, a):
-        '''Action a'''
+        '''Change the current state to the next state according to given action a'''
         assert not self.scored[a] # The cell is not already scored 
         list_scored = list(self.scored)
         list_scored[a] = True
@@ -169,6 +170,22 @@ class YamsEnvNoe:
     def is_done(self):
         '''Is the current state a terminal state ?'''
         return np.all(self.scored)
+    
+    def is_terminal_state(self,s):
+        return np.all(s)
+    
+    def choose_epsilon_action(self, Q, epsilon):
+        """Return the best action (with a probability of 1-epsilon else a random action) 
+        and its associated reward given a state s."""
+        dices = self.choose_turn_action()
+        actions = self.get_actions(dices)
+        if not actions:
+            return None, 0
+        if np.random.random() > epsilon:
+            best_action = max(actions, key=lambda x: Q[(self.scored, x[0])])
+            return best_action
+        return choice(actions)
+        
         
     def choose_best_action(self, Q):
         """Return the best action and its associated reward given a state s."""
@@ -210,6 +227,147 @@ class YamsEnvNoe:
         '''Reset the game.
         Current state becomes an empty sheet score'''
         self.scored = tuple([False for _ in range(len(self.figures))])
+        self.tot_reward = 0
+
+
+EMPTY = -1
+class YamsEnvAlternative:
+    """Class to represent a Yams Game.
+    states are represent by tuple where each cell correspond to a unique associated Figure.
+    If its value is F-1 then is in not scored else it is scored.
+    action is a tuple(int, value) corresponding to the index of the cell to cross in a state and the reward associated."""
+    
+    def __init__(self, nb_dice: int, nb_face: int, figures: dict[Figure]):
+        self.nb_face = nb_face
+        self.nb_dice = nb_dice 
+        self.figures = figures # List of figure object
+        self.states = self.get_states() # List of all possible states
+        self.scored = tuple([EMPTY for _ in range(len(figures))]) # Current state in the game
+        self.tot_reward = 0
+
+    def get_states(self):
+        """Return a list of all possibles states"""
+        states = []
+        values = list(map(lambda x: x.get_possible_values(self.nb_dice, self.nb_face), self.figures))
+        for i in range(len(values)):
+            values[i].append(EMPTY)
+        for it in itertools.product(*values):
+            states.append(tuple(it))
+        return states
+    
+    def list_actions(self, s):
+        '''Return a list of all possible actions from state s regardles
+        of dices.'''
+        if self.is_terminal_state(s):
+            return [None]
+        actions = []
+        for i in range(len(s)):
+            if s[i] == EMPTY:
+                for value in self.figures[i].get_possible_values(self.nb_dice, self.nb_face):
+                    actions.append((i, int(value)))
+        return actions
+    
+    
+    def get_actions(self, dices):
+        """Return a list of all possible actions and associated reward from state s depending on 
+        given dices."""
+        actions = []
+        for i, figure in enumerate(self.figures):
+            if figure.is_valid(dices) and self.scored[i] == EMPTY:
+                future_reward = figure.compute_value(dices)
+                actions.append(((i, int(future_reward)), future_reward))
+        if not actions: # Empty list
+            for i in range(len(self.figures)):
+                if self.scored[i] == EMPTY:
+                    actions.append(((i, 0), 0))
+        return actions
+    
+    
+    def generate_episode(self, Q, seed=None):
+        '''Play the game once. Return a list of all tuple starting state, 
+        actions, associated reward and ending state. Starts the game on empty
+        score sheet state(init state).'''
+        self.reset()
+        if seed is not None:
+            np.random.seed(seed)
+        episode = []
+        while not self.is_done():
+            s = self.scored
+            a,r = self.choose_best_action(Q) # Returns best action considering the policy corresponding to Q
+            self.tot_reward += r
+            self.next_state(a) # Go to next state following action a
+            next_s = self.scored
+            episode.append(tuple([s, a, r, next_s]))
+        return episode
+            
+    
+    def next_state(self, a):
+        '''Change the current state to the next state according to given action a'''
+        assert self.scored[a[0]] == EMPTY # The cell is not already scored 
+        list_scored = list(self.scored)
+        list_scored[a[0]] = a[1]
+        self.scored = tuple(list_scored) 
+        
+    def is_done(self):
+        '''Is the current state a terminal state ?'''
+        return np.all(np.array(self.scored) != EMPTY)
+    
+    def is_terminal_state(self,s):
+        return np.all(np.array(s) != EMPTY)
+    
+    def choose_epsilon_action(self, Q, epsilon):
+        """Return the best action (with a probability of 1-epsilon else a random action) 
+        and its associated reward given a state s."""
+        dices = self.choose_turn_action()
+        actions = self.get_actions(dices)
+        if not actions:
+            return None, 0
+        if np.random.random() > epsilon:
+            best_action = max(actions, key=lambda x: Q[(self.scored, x[0])])
+            return best_action
+        return choice(actions)
+        
+        
+    def choose_best_action(self, Q):
+        """Return the best action and its associated reward given a state s."""
+        dices = self.choose_turn_action()
+        actions = self.get_actions(dices)
+        if not actions:
+            return None, 0
+        best_action = max(actions, key=lambda x: Q[(self.scored, x[0])])
+        return best_action
+    
+    def choose_turn_action(self):
+        '''Play a Turn following the best policy. Returns s (dices) '''
+        MyTurn = TurnEnvironment(self.nb_dice,self.nb_face)
+        
+        reward_table = np.zeros((len(MyTurn.S),len(self.figures)))
+        for i, s in enumerate(MyTurn.S):
+            Aa = self.get_actions(s)
+            for a, r in Aa :
+                reward_table[i,a[0]]= r
+
+        v_3 = reward_table.max(axis=1)
+        v_2,Q_2 = MyTurn.One_step_backward(v_3)
+        v_1,Q_1 = MyTurn.One_step_backward(v_2)
+        #######################################
+        # First Roll
+        s0 = MyTurn.get_state_from_action(np.zeros((self.nb_face),dtype='int'))       
+        a0,_ = MyTurn.choose_best_action(s0,Q_1)
+        ############################################"""
+        # Second Roll
+        s1 = MyTurn.get_state_from_action(a0)
+        a1,_ = MyTurn.choose_best_action(s1,Q_2)
+        #######
+        #Third Roll
+        s2 = MyTurn.get_state_from_action(a0)
+      
+        return s2
+    
+    def reset(self):
+        '''Reset the game.
+        Current state becomes an empty sheet score'''
+        self.scored = tuple([EMPTY for _ in range(len(self.figures))]) # Current state in the game
         self.tot_reward = 0
 
 
