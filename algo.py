@@ -1,9 +1,12 @@
-from yams_env import YamsEnvAlternative as YamsEnv
 from random import choice
+
 import numpy as np
 from tqdm import tqdm
 
-def first_visit_MC_prediction(env:YamsEnv, gamma:float=0.9, max_iter:int=100, seed:int=None):
+from yams_env import YamsEnvAlternative, YamsEnvNoe
+
+
+def first_visit_MC_prediction(env, gamma:float=0.9, max_iter:int=100, seed:int=None):
     Returns = {}
     if seed is not None:
         np.random.seed(seed)
@@ -21,11 +24,11 @@ def first_visit_MC_prediction(env:YamsEnv, gamma:float=0.9, max_iter:int=100, se
             Q[(s, a)] = float(np.mean(Returns[(s,a)]))
     return Q
 
-def SARSA(env:YamsEnv, gamma:float=0.9, alpha=0.4, max_iter:int=100, epsilon:float=0.1, seed:int=None):
+def SARSA(env, gamma:float=0.5, alpha=0.1, max_iter:int=100, epsilon:float=0.5, seed:int=None):
     if seed is not None:
         np.random.seed(seed)
     Q = {}
-    for s in env.states:
+    for s in tqdm(env.states, desc='Initialisation'):
         all_actions = env.list_actions(s)
         for a in all_actions:
             if env.is_terminal_state(s):
@@ -47,31 +50,48 @@ def SARSA(env:YamsEnv, gamma:float=0.9, alpha=0.4, max_iter:int=100, epsilon:flo
 
 
 if __name__ == '__main__':
-    from figures import Multiple, Chance, Number, Brelan, Suite
-    env = YamsEnv(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7)])
+    from figures import Brelan, Chance, Multiple, Number, Suite
+
+    env1 = YamsEnvNoe(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 56)])
+    env2 = YamsEnvAlternative(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 56)])
     #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
-    #env = YamsEnv(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Suite(1,5, 25), Suite(2, 6, 25), Multiple(4, 30), Multiple(5, 50)])
+    #env = YamsEnv(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7)])
+    #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
+    #env1 = YamsEnvNoe(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Multiple(4, 30), Multiple(5, 50)])
+    #env2 = YamsEnvAlternative(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Multiple(4, 30), Multiple(5, 50)])
+    
+    
+    
     for j in range(10):
-        best_Q = first_visit_MC_prediction(env, max_iter=10000, seed=j)
+
+        best_Qenv1 = first_visit_MC_prediction(env1, max_iter=10000, seed=j+4)
+        best_Qenv2 = first_visit_MC_prediction(env2, max_iter=10000, seed=j+4)
         randomQ_rewards = []
-        bestQ_rewards = []
-        np.random.seed(j)
+        bestQenv1_rewards = []
+        bestQenv2_rewards = []
+        np.random.seed(j+4)
         Q = {}
-        for s in env.states:
-            all_actions = env.list_actions(s)
+        for s in env1.states:
+            all_actions = env1.list_actions(s)
             for a in all_actions:
                 Q[(s,a)] = np.random.random() # Random policy
-        k = 100
+        k = 1000
+        print(f'Rank{j}: starts generating episodes')
+        
         # Test with a random policy
-        for i in tqdm(range(k), desc='Generate episodes for random policy'):
-            episode = env.generate_episode(Q, seed=i)
-            randomQ_rewards.append(env.tot_reward)
-            
-        for i in tqdm(range(k), desc='Generate episodes for learned policy'):
-            episode = env.generate_episode(best_Q,seed=i)
-            bestQ_rewards.append(env.tot_reward)
+        for i in tqdm(range(k), desc='Random policy'):
+            episode = env1.generate_episode(Q, seed=i, random=True)
+            randomQ_rewards.append(env1.tot_reward)
+        for i in tqdm(range(k), desc='Best policy Noe'):
+            episode = env1.generate_episode(best_Qenv1,seed=i)
+            bestQenv1_rewards.append(env1.tot_reward)
+        for i in tqdm(range(k), desc='Best policy Berar'):
+            episode = env2.generate_episode(best_Qenv2, seed=i)
+            bestQenv2_rewards.append(env2.tot_reward)
+        
         
         print(f'Pour les mêmes lancer de dès:')
         print(f'Reward moyen politique random: {np.mean(randomQ_rewards)}')
-        print(f'Reward moyen best politique: {np.mean(bestQ_rewards)}')
+        print(f'Reward moyen best politique (Noe): {np.mean(bestQenv1_rewards)}')
+        print(f'Reward moyen best politique (Berar): {np.mean(bestQenv2_rewards)}')
         
