@@ -19,8 +19,12 @@ class YamsEnvPierre:
     def __init__(self, nb_dice: int, nb_face: int, figures: dict[Figure], RL_policy: callable = default_RL_policy):
         self.nb_face = nb_face
         self.nb_dice = nb_dice
+        self.MyTurn = TurnEnvironment(self.nb_dice,self.nb_face)
         self.figures = figures
         self.states = self.get_states()
+        #self.turnQs = self.get_turnQs() # List of all possible TurnEnv Q value for each YamsEnv state
+        #np.save('turnQsF.npy', self.turnQs)
+        self.turnQs = np.load('turnQs6.npy',allow_pickle=True).item()
         self.RL_policy = RL_policy
         self.scored = [False for _ in range(len(figures))]
         self.tot_reward = 0
@@ -29,8 +33,25 @@ class YamsEnvPierre:
         """Return a list of all possibles states"""
         states = []
         for it in itertools.product(range(2), repeat=len(self.figures)):
-            states.append(it)
+            states.append(tuple(it))
         return states
+    
+    def get_turnQs(self):
+        '''Return a list of all possible TurnEnv Q value for each YamsEnv state'''
+        turnQs = {}
+        for scored in tqdm(self.states):
+            self.scored = scored
+            reward_table = np.zeros((len(self.MyTurn.S),len(self.figures)))
+            for i, s in enumerate(self.MyTurn.S):
+                Aa = self.get_actions(s)
+                for a, r in Aa :
+                    reward_table[i,a]= r
+
+            v_3 = reward_table.max(axis=1)
+            v_2,Q_2 = self.MyTurn.One_step_backward(v_3)
+            v_1,Q_1 = self.MyTurn.One_step_backward(v_2)
+            turnQs[scored] = (Q_1, Q_2)
+        return turnQs
     
     def get_actions(self, dices):
         """Return a list of all possible actions from state s."""
@@ -54,15 +75,14 @@ class YamsEnvPierre:
         return best_action
     
     def choose_action(self):
-        self.MyTurn = TurnEnvironment(self.nb_dice,self.nb_face)
-        
-        v_3 = np.zeros(len(MyTurn.S))
-        for i, s in enumerate(MyTurn.S):
+        '''v_3 = np.zeros(len(self.MyTurn.S))
+        for i, s in enumerate(self.MyTurn.S):
             Aa = self.get_actions(s)
             v_3[i] = self.RL_policy(self.scored, Aa)[1]
         
-        v_2,Q_2 = MyTurn.One_step_backward(v_3)
-        v_1,Q_1 = MyTurn.One_step_backward(v_2)
+        v_2,Q_2 = self.MyTurn.One_step_backward(v_3)
+        v_1,Q_1 = self.MyTurn.One_step_backward(v_2)'''
+        Q_1, Q_2 = self.turnQs[tuple(self.scored)]
         #######################################
         # First Roll
         s0 = self.MyTurn.get_state_from_action(np.zeros((self.nb_face),dtype='int'))       
@@ -111,9 +131,9 @@ class YamsEnvNoe:
         self.MyTurn = TurnEnvironment(self.nb_dice,self.nb_face)
         self.figures = figures # List of figure object
         self.states = self.get_states() # List of all possible states
-        self.turnQs = self.get_turnQs() # List of all possible TurnEnv Q value for each YamsEnv state
-        np.save('turnQs3.npy', self.turnQs)
-        #self.turnQs = np.load('turnQs.npy',allow_pickle=True).item()
+        #self.turnQs = self.get_turnQs() # List of all possible TurnEnv Q value for each YamsEnv state
+        #np.save('turnQs6.npy', self.turnQs)
+        self.turnQs = np.load('turnQs6.npy',allow_pickle=True).item()
         self.scored = tuple([False for _ in range(len(figures))]) # Current state in the game
         self.tot_reward = 0
 
@@ -168,7 +188,7 @@ class YamsEnvNoe:
         return actions
     
     
-    def generate_episode(self, Q, seed=None, random=False):
+    def generate_episode(self, Q, epsilon=0.0, seed=None):
         '''Play the game once. Return a list of all tuple starting state, 
         actions, associated reward and ending state. Starts the game on empty
         score sheet state(init state).'''
@@ -178,10 +198,7 @@ class YamsEnvNoe:
         episode = []
         while not self.is_done():
             s = self.scored
-            if random:
-                a, r = self.choose_epsilon_action(Q, 1)
-            else:
-                a,r = self.choose_best_action(Q) # Returns best action considering the policy corresponding to Q
+            a, r = self.choose_epsilon_action(Q, epsilon) # Returns best action considering the policy corresponding to Q
             self.tot_reward += r
             self.next_state(a) # Go to next state following action a
             next_s = self.scored
@@ -210,7 +227,7 @@ class YamsEnvNoe:
         actions = self.get_actions(dices)
         if not actions:
             return None, 0
-        if np.random.random() < epsilon:
+        if np.random.random() > epsilon:
             best_action = max(actions, key=lambda x: Q[(self.scored, x[0])])
             return best_action
         return choice(actions)
@@ -222,10 +239,6 @@ class YamsEnvNoe:
     
     def choose_turn_action(self):
         '''Play a Turn following the best policy. Returns s (dices) '''
-
-        '''v_3 = reward_table.max(axis=1)
-        v_2,Q_2 = self.MyTurn.One_step_backward(v_3)
-        v_1,Q_1 = self.MyTurn.One_step_backward(v_2)'''
         Q_1, Q_2 = self.turnQs[self.scored]
         #######################################
         # First Roll
@@ -261,8 +274,8 @@ class YamsEnvAlternative:
         self.MyTurn = TurnEnvironment(self.nb_dice,self.nb_face)
         self.figures = figures # List of figure object
         self.states = self.get_states() # List of all possible states
-        #self.turnQs = self.get_turnQs() # List of all possible TurnEnv Q value for each YamsEnv state
-        self.turnQs = np.load('turnQs3.npy',allow_pickle=True).item()
+        self.turnQs = self.get_turnQs() # List of all possible TurnEnv Q value for each YamsEnv state
+        #self.turnQs = np.load('turnQs6.npy',allow_pickle=True).item()
         self.scored = tuple([EMPTY for _ in range(len(figures))]) # Current state in the game
         self.tot_reward = 0
 
@@ -323,7 +336,7 @@ class YamsEnvAlternative:
         return actions
     
     
-    def generate_episode(self, Q, seed=None):
+    def generate_episode(self, Q, epsilon=0.0, seed=None):
         '''Play the game once. Return a list of all tuple starting state, 
         actions, associated reward and ending state. Starts the game on empty
         score sheet state(init state).'''
@@ -333,7 +346,7 @@ class YamsEnvAlternative:
         episode = []
         while not self.is_done():
             s = self.scored
-            a,r = self.choose_best_action(Q) # Returns best action considering the policy corresponding to Q
+            a,r = self.choose_epsilon_action(Q, epsilon=epsilon) # Returns best action considering the policy corresponding to Q
             self.tot_reward += r
             self.next_state(a) # Go to next state following action a
             next_s = self.scored

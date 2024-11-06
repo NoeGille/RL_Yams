@@ -1,6 +1,8 @@
-from figures import Multiple, Chance, Number
-from yams_env import YamsEnvPierre as YamsEnv
 from tqdm import tqdm
+
+from figures import Chance, Multiple, Number
+from yams_env import YamsEnvPierre as YamsEnv
+
 
 class first_visit_MC():
     def choose_action(self, state, actions):
@@ -52,11 +54,14 @@ class first_visit_MC():
 if __name__== "__main__":
     from figures import *
     rl = first_visit_MC()
-    #env = YamsEnv(3, 3, [Multiple(3, 15), Multiple(2, 5), Number(0), Number(1), Number(2), Chance()], rl.choose_action)
-    env2 = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)], rl.choose_action)
+    #env2 = YamsEnv(3, 3, [Multiple(3, 15), Multiple(2, 5), Number(0), Number(1), Number(2), Chance()], rl.choose_action)
+    #env2 = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)], rl.choose_action)
+    #env2 = YamsEnv(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 56)])
+    env2 = YamsEnv(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Multiple(4, 30), Multiple(5, 50)])
     #env3 = YamsEnv(5, 6, [Multiple(5, 50), Multiple(4, 20), Brelan(), Suite(1, 5, 30), Suite(2, 6, 30), Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Chance(), Full()])
-    scores = rl.learn(2000, env2, l=1)
+    scores = rl.learn(20000, env2, l=1)
     import matplotlib.pyplot as plt
     plt.plot(scores)
+    print(f'Moyenne des rewards', np.mean(scores))
     plt.plot(np.polyval(np.polyfit(range(len(scores)), scores, 1), range(len(scores))))
     plt.show()
