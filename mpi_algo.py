@@ -41,13 +41,14 @@ def SARSA(env, gamma:float=0.9, alpha=0.4, max_iter:int=100, epsilon:float=0.1, 
             else: 
                 Q[(s,a)] = np.random.random()
     for i in range(max_iter):
+        e = epsilon if epsilon is not None else 1 - i/max_iter # Adding epsilon decay
         env.reset()
         s = env.scored
-        a, _ = env.choose_epsilon_action(Q, epsilon)
+        a, _ = env.choose_epsilon_action(Q, e)
         while not env.is_done():
             env.next_state(a)
             next_s = env.scored
-            next_a, r = env.choose_epsilon_action(Q, epsilon)
+            next_a, r = env.choose_epsilon_action(Q, e)
             Q[(s, a)] = Q[(s, a)] + alpha * (r + gamma*Q[(next_s, next_a)] - Q[(s, a)])
             s = next_s
             a = next_a
@@ -60,22 +61,21 @@ if __name__ == '__main__':
     env2 = YamsEnvAlternative(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 56)])
     #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
     print(f'Rank{RANK}: starts training')
-    best_Qenv1 = SARSA(env1, max_iter=1000, seed=RANK+4)
-    best_Qenv2 = SARSA(env2, max_iter=1000, seed=RANK+4)
+    best_Qenv1 = SARSA(env1, max_iter=1000, seed=RANK+4, alpha=1, epsilon=None)
+    best_Qenv2 = SARSA(env2, max_iter=1000, seed=RANK+4, alpha=1, epsilon=None)
     randomQ_rewards = []
     bestQenv1_rewards = []
     bestQenv2_rewards = []
     np.random.seed(RANK+4)
-    Q = {}
-    for s in env1.states:
-        all_actions = env1.list_actions(s)
-        for a in all_actions:
-            Q[(s,a)] = np.random.random() # Random policy
     k = 100
     print(f'Rank{RANK}: starts generating episodes')
-    
     # Test with a random policy
     for i in range(k):
+        Q = {}
+        for s in env1.states:
+            all_actions = env1.list_actions(s)
+            for a in all_actions:
+                Q[(s,a)] = np.random.random() # Random policy
         episode = env1.generate_episode(Q, seed=i)
         randomQ_rewards.append(env1.tot_reward)
     for i in range(k):
@@ -84,9 +84,14 @@ if __name__ == '__main__':
     for i in range(k):
         episode = env1.generate_episode(best_Qenv1,seed=i)
         bestQenv1_rewards.append(env1.tot_reward)
-    
-    print(f'Pour les mêmes lancer de dès:')
-    print(f'Reward moyen politique random: {np.mean(randomQ_rewards)}')
-    print(f'Reward moyen best politique(Noe): {np.mean(bestQenv1_rewards)}')
-    print(f'Reward moyen best politique(Berar): {np.mean(bestQenv2_rewards)}')
-        
+    randomQ_rewards = COMM.gather(randomQ_rewards, root=0)
+    bestQenv1_rewards = COMM.gather(bestQenv1_rewards, root=0)
+    bestQenv2_rewards = COMM.gather(bestQenv2_rewards, root=0)
+    if RANK == 0:
+        randomQ_rewards = np.concatenate(randomQ_rewards)
+        bestQenv1_rewards = np.concatenate(bestQenv1_rewards)
+        bestQenv2_rewards = np.concatenate(bestQenv2_rewards)
+        print(f'Pour les memes lancer de des: ({len(randomQ_rewards)} episodes)')
+        print(f'Reward moyenne politique random: {np.mean(randomQ_rewards)}')
+        print(f'Reward moyenne best politique(Noe): {np.mean(bestQenv1_rewards)}')
+        print(f'Reward moyenne best politique(Berar): {np.mean(bestQenv2_rewards)}')

@@ -56,15 +56,13 @@ class YamsEnvPierre:
     def choose_action(self):
         self.MyTurn = TurnEnvironment(self.nb_dice,self.nb_face)
         
-        reward_table = np.zeros((len(self.MyTurn.S),len(self.figures)))
-        for i, s in enumerate(self.MyTurn.S):
+        v_3 = np.zeros(len(MyTurn.S))
+        for i, s in enumerate(MyTurn.S):
             Aa = self.get_actions(s)
-            for a, r in Aa :
-                reward_table[i,a]= r
-
-        v_3 = reward_table.max(axis=1)
-        v_2,Q_2 = self.MyTurn.One_step_backward(v_3)
-        v_1,Q_1 = self.MyTurn.One_step_backward(v_2)
+            v_3[i] = self.RL_policy(self.scored, Aa)[1]
+        
+        v_2,Q_2 = MyTurn.One_step_backward(v_3)
+        v_1,Q_1 = MyTurn.One_step_backward(v_2)
         #######################################
         # First Roll
         s0 = self.MyTurn.get_state_from_action(np.zeros((self.nb_face),dtype='int'))       
@@ -84,15 +82,17 @@ class YamsEnvPierre:
         action, reward = self.RL_policy(self.scored, Aa)
         #print(reward)
 
-        return action, reward
+        return action, int(reward)
 
     def play_game(self):
+        history = []
         for i in range(len(self.figures)):
             action, reward = self.choose_action()
+            history.append((tuple(self.scored), reward))
             assert not self.scored[action]
             self.scored[action] = True
             self.tot_reward += reward
-        return self.tot_reward
+        return self.tot_reward, history
     
     def reset(self):
         self.scored = [False for _ in range(len(self.figures))]
@@ -218,12 +218,7 @@ class YamsEnvNoe:
         
     def choose_best_action(self, Q):
         """Return the best action and its associated reward given a state s."""
-        dices = self.choose_turn_action()
-        actions = self.get_actions(dices)
-        if not actions:
-            return None, 0
-        best_action = max(actions, key=lambda x: Q[(self.scored, x[0])])
-        return best_action
+        return self.choose_epsilon_action(Q, 0)
     
     def choose_turn_action(self):
         '''Play a Turn following the best policy. Returns s (dices) '''
@@ -375,12 +370,7 @@ class YamsEnvAlternative:
         
     def choose_best_action(self, Q):
         """Return the best action and its associated reward given a state s."""
-        dices = self.choose_turn_action()
-        actions = self.get_actions(dices)
-        if not actions:
-            return None, 0
-        best_action = max(actions, key=lambda x: Q[(self.scored, x[0])])
-        return best_action
+        return self.choose_epsilon_action(Q, 0)
     
     def choose_turn_action(self):
         '''Play a Turn following the best policy. Returns s (dices) '''
