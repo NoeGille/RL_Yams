@@ -50,7 +50,7 @@ if __name__ == '__main__':
     from figures import Multiple, Chance, Number, Brelan, Suite
     env = YamsEnv(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7)])
     #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
-    #env = YamsEnv(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Suite(1,5, 25), Suite(2, 6, 25), Multiple(4, 30), Multiple(5, 50)])
+    env = YamsEnv(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Suite(1,5, 25), Suite(2, 6, 25), Multiple(4, 30), Multiple(5, 50)])
     for j in range(10):
         best_Q = first_visit_MC_prediction(env, max_iter=10000, seed=j)
         randomQ_rewards = []
