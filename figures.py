@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Figure:
     def is_valid(self, dices:np.array):
         return NotImplementedError
@@ -16,6 +17,9 @@ class Chance(Figure):
 
     def compute_value(self, dices:np.array):
         return (dices * (np.arange(dices.shape[0]) + 1)).sum()
+    
+    def get_possible_values(self, n_dice:int, n_face:int):
+        return range(n_dice, (n_dice * (n_face + 1)))
     
 
 class Number(Figure):
@@ -45,6 +49,9 @@ class Suite(Figure):
         if not self.is_valid(dices):
             return 0
         return self.value
+    def get_possible_values(self, n_dice:int, n_face:int):
+        return [0, self.value]
+    
     
 class Brelan(Figure):
     def is_valid(self, dices:np.array):
@@ -82,6 +89,8 @@ class Full(Figure):
         if not self.is_valid(dices):
             return 0
         return 25
+    def get_possible_values(self, n_dice:int, n_face:int):
+        return [0, 25]
 
 if __name__ == "__main__":
     dices = np.bincount(np.random.randint(0, 6, (5)), minlength=6)
