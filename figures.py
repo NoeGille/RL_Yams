@@ -11,6 +11,9 @@ class Figure:
     def get_possible_values(self , n_dice:int, n_face:int):
         return NotImplementedError
     
+    def get_max_values(self, n_dice:int, n_face:int):
+        return NotImplementedError
+    
 class Chance(Figure):
     def is_valid(self, dices:np.array):
         return True
@@ -19,7 +22,10 @@ class Chance(Figure):
         return (dices * (np.arange(dices.shape[0]) + 1)).sum()
     
     def get_possible_values(self, n_dice:int, n_face:int):
-        return range(n_dice, (n_dice * (n_face + 1)))
+        return [i for i in range(n_dice, (n_dice * (n_face + 1)))]
+    
+    def get_max_values(self, n_dice:int, n_face:int):
+        return n_dice * (n_face + 1)
     
 
 class Number(Figure):
@@ -30,11 +36,13 @@ class Number(Figure):
         return dices[self.number] > 0
 
     def compute_value(self, dices:np.array):
-        return (self.number + 1) * dices[self.number]
+        return (int(self.number + 1) * dices[self.number])
 
     def get_possible_values(self, n_dice:int, n_face:int):
-        return [(self.number + 1) * i for i in range(n_dice+1)]
+        return [int((self.number + 1) * i) for i in range(n_dice+1)]
         
+    def get_max_values(self, n_dice:int, n_face:int):
+        return int(n_dice * (self.number + 1))
         
 class Suite(Figure):
     def __init__(self, start:int, end:int, value:int=30):
@@ -52,18 +60,23 @@ class Suite(Figure):
     def get_possible_values(self, n_dice:int, n_face:int):
         return [0, self.value]
     
+    def get_max_values(self, n_dice:int, n_face:int):
+        return self.value
     
 class Brelan(Figure):
     def is_valid(self, dices:np.array):
-        return np.max(dices) >= 3
+        return bool(np.max(dices) >= 3)
 
     def compute_value(self, dices:np.array):
         if not self.is_valid(dices):
             return 0
-        return (dices * (np.arange(dices.shape[0]) + 1)).sum()
+        return int((np.argmax(dices) + 1) * 3)
+    
     def get_possible_values(self, n_dice:int, n_face:int):
         return [i*3 for i in range(n_face + 1)]
     
+    def get_max_values(self, n_dice:int, n_face:int):
+        return 3 * n_face
     
 class Multiple(Figure):
     def __init__(self, nb:int, value:int):
@@ -80,6 +93,9 @@ class Multiple(Figure):
     def get_possible_values(self, n_dice:int, n_face:int):
         return [0, self.value]
     
+    def get_max_values(self, n_dice:int, n_face:int):   
+        return self.value
+    
 class Full(Figure):
     def is_valid(self, dices:np.array):
         result = np.sort(dices)
@@ -91,6 +107,9 @@ class Full(Figure):
         return 25
     def get_possible_values(self, n_dice:int, n_face:int):
         return [0, 25]
+    
+    def get_max_values(self, n_dice:int, n_face:int):
+        return 25
 
 if __name__ == "__main__":
     dices = np.bincount(np.random.randint(0, 6, (5)), minlength=6)

@@ -73,21 +73,21 @@ def Qlearning(env:YamsEnvNoe, gamma:float=1.0, alpha=1.0, max_iter:int=100, epsi
 if __name__ == '__main__':
     from figures import Brelan, Chance, Multiple, Number, Suite
 
-    env1 = YamsEnvNoe(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 56)])
-    #env2 = YamsEnvAlternative(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7), Multiple(3, 56)])
+    env1 = YamsEnvNoe(3, 3, [Multiple(3, 15), Multiple(2, 5), Number(0), Number(1), Number(2), Chance()])
+    env2 = YamsEnvAlternative(3, 3, [Multiple(3, 15), Multiple(2, 5), Number(0), Number(1), Number(2), Chance()])
     #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
     #env = YamsEnv(3, 3, [Number(0), Number(1), Number(2), Multiple(3, 7)])
     #env = YamsEnv(4, 5, [Multiple(4, 20), Brelan(), Suite(1, 4, 20), Suite(2, 5, 20), Number(0), Number(1), Number(2), Number(3), Number(4)])
-    env1 = YamsEnvNoe(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Multiple(4, 30), Multiple(5, 50)])
+    #env1 = YamsEnvNoe(5, 6, [Multiple(3, 15), Multiple(2, 5), Number(0), Number(1), Number(2), Chance()])
     #env2 = YamsEnvAlternative(5, 6, [Number(0), Number(1), Number(2), Number(3), Number(4), Number(5), Brelan(), Multiple(4, 30), Multiple(5, 50)])
     
     
     
     for j in range(10):
 
-        #best_Qenv1 = first_visit_MC_prediction(env1, max_iter=10000, seed=0, epsilon=j/100)
-        #best_Qenv2 = first_visit_MC_prediction(env2, max_iter=10000, seed=j+4, epsilon=j/100)
-        best_Qenv1 = Qlearning(env1, max_iter=10000, seed=0, epsilon=0.5)
+        best_Qenv1 = first_visit_MC_prediction(env1, max_iter=10000, seed=0, epsilon=1.0)
+        best_Qenv2 = first_visit_MC_prediction(env2, max_iter=10000, seed=j+4, epsilon=1.0)
+        #best_Qenv1 = Qlearning(env1, max_iter=10000, seed=0, epsilon=0.5)
         randomQ_rewards = []
         bestQenv1_rewards = []
         bestQenv2_rewards = []
@@ -107,13 +107,13 @@ if __name__ == '__main__':
         for i in tqdm(range(k), desc='Best policy Noe'):
             episode = env1.generate_episode(best_Qenv1,seed=i)
             bestQenv1_rewards.append(env1.tot_reward)
-        #for i in tqdm(range(k), desc='Best policy Berar'):
-        #    episode = env2.generate_episode(best_Qenv2, seed=i)
-        #    bestQenv2_rewards.append(env2.tot_reward)
+        for i in tqdm(range(k), desc='Best policy Berar'):
+            episode = env2.generate_episode(best_Qenv2, seed=i)
+            bestQenv2_rewards.append(env2.tot_reward)
         
         
         print(f'Pour les mêmes lancer de dès:')
         print(f'Reward moyen politique random: {np.mean(randomQ_rewards)}')
         print(f'Reward moyen best politique (Noe): {np.mean(bestQenv1_rewards)}')
-        #print(f'Reward moyen best politique (Berar): {np.mean(bestQenv2_rewards)}')
+        print(f'Reward moyen best politique (Berar): {np.mean(bestQenv2_rewards)}')
         
