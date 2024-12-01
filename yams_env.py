@@ -88,6 +88,8 @@ class YamsEnvBinary:
             for i in range(len(self.figures)):
                 if not self.scored[i]:
                     actions.append((i, 0))
+        if not actions: # State is terminal
+            actions.append((0, 0))
         return actions
         
     def is_terminal_state(self, state):
@@ -111,13 +113,10 @@ class YamsEnvBinary:
         #######
         #Third Roll
         s2 = self.MyTurn.get_state_from_action(a0)
-        #print(s2)
-        
+
         Aa = self.get_actions(s2)        
-        #print(Aa)
-        
+
         action, reward = self.RL_policy(self.scored, Aa)
-        #print(reward)
 
         return action, int(reward)
 
@@ -259,12 +258,10 @@ class YamsEnvTotal:
         #######
         #Third Roll
         s2 = self.MyTurn.get_state_from_action(a0)
-        #print(s2)
         
         Aa = self.get_actions(s2)        
 
         action, reward = self.RL_policy(self.scored, Aa)
-        #print(reward)
 
         return action, int(reward)
         
@@ -289,13 +286,10 @@ class YamsEnvTotal:
         #######
         #Third Roll
         s2 = self.MyTurn.get_state_from_action(a0)
-        #print(s2)
-        
+
         Aa = self.get_actions(s2)        
-        #print(Aa)
-        
+
         action, reward = self.RL_policy(self.scored, Aa)
-        #print(reward)
 
         return action, int(reward)
     
